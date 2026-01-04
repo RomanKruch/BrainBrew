@@ -7,6 +7,10 @@ import { User } from './user.schema';
 export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
+  async findAllUsers() {
+    return this.userModel.find();
+  }
+
   async findOrCreate(telegramId: number) {
     let user = await this.userModel.findOne({ telegramId });
     if (!user) user = await this.userModel.create({ telegramId });
@@ -15,10 +19,7 @@ export class UserService {
 
   // 1️⃣ позначити як прочитано
   async markAsRead(userId: Types.ObjectId, textId: Types.ObjectId) {
-    await this.userModel.updateOne(
-      { _id: userId },
-      { $addToSet: { seenTexts: textId } }
-    );
+    await this.userModel.updateOne({ _id: userId }, { $addToSet: { seenTexts: textId } });
   }
 
   // 2️⃣ лайкнути текст
@@ -28,7 +29,7 @@ export class UserService {
       {
         $addToSet: { likedTexts: textId },
         $pull: { dislikedTexts: textId }, // прибираємо з дизлайку
-      }
+      },
     );
   }
 
@@ -39,7 +40,7 @@ export class UserService {
       {
         $addToSet: { dislikedTexts: textId },
         $pull: { likedTexts: textId }, // прибираємо з лайку
-      }
+      },
     );
   }
 }
