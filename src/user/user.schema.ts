@@ -14,6 +14,15 @@ export class User extends Document {
 
   @Prop({ default: true })
   enabled: boolean;
+
+  @Prop({ type: [String], default: [] })
+  likedTexts: string[];
+
+  @Prop({ type: [String], default: [] })
+  dislikedTexts: string[];
+
+  @Prop({ type: [String], default: [] })
+  seenTexts: string[];
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);

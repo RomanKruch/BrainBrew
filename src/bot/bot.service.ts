@@ -1,15 +1,16 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Telegraf } from 'telegraf';
 import { UserService } from '../user/user.service';
-import { TOPICS } from '../content/topics';
-import { GeminiService } from '../ai/ai.service';
-
+import { TextService } from '../text/text.service';
 
 @Injectable()
 export class BotService implements OnModuleInit {
   private bot: Telegraf;
 
-  constructor(private readonly userService: UserService,private readonly aiService: GeminiService,) {}
+  constructor(
+    private readonly userService: UserService,
+    private readonly textService: TextService,
+  ) {}
 
   async onModuleInit() {
     this.bot = new Telegraf(process.env.BOT_TOKEN!);
@@ -22,89 +23,69 @@ export class BotService implements OnModuleInit {
 
   private registerCommands() {
     this.bot.start(this.onStart);
-    this.bot.command('topics', this.sendTopics);
-    this.bot.action(/topic:(.+)/, this.onTopicSelect);
-    this.bot.command('text', this.sendTextByTopic);
+    this.bot.command('text', this.sendText);
+    this.bot.on('callback_query', this.handleCallbackQuery);
   }
 
   // ================= Handlers =================
 
-  private onStart = async (ctx) => {
+  private onStart = async ctx => {
     try {
       await this.userService.findOrCreate(ctx.from.id);
-      await ctx.reply(
-        '☕🧠 Вітаю в BrainBrew!\nНапиши /topics щоб обрати теми для щоденних матеріалів.'
-      );
+      await ctx.reply('☕🧠 Вітаю в BrainBrew!');
     } catch (error) {
       console.error('Error in /start:', error);
       await ctx.reply('❌ Сталася помилка при запуску бота.');
     }
   };
 
-  private sendTopics = async (ctx) => {
+  private sendText = async ctx => {
     try {
+      // 1️⃣ Отримуємо користувача
       const user = await this.userService.findOrCreate(ctx.from.id);
 
-      await ctx.reply(
-        'Обери теми. Натискай — вмикається / вимикається 👇',
-        this.buildTopicsKeyboard(user.topics),
-      );
+      // 2️⃣ Отримуємо текст, який юзер ще не бачив
+      const text = await this.textService.getOneNotSeen(user.seenTexts);
+      if (!text) {
+        return ctx.reply('Немає нових текстів для тебе 😔');
+      }
+
+      // 3️⃣ Позначаємо текст як прочитаний
+      await this.userService.markAsRead(user._id, text._id);
+
+      // 4️⃣ Відправляємо текст з кнопками лайк/дизлайк
+      await ctx.reply(text.content, {
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '👍 Лайк', callback_data: `like:${text._id}` },
+              { text: '👎 Дизлайк', callback_data: `dislike:${text._id}` },
+            ],
+          ],
+        },
+      });
     } catch (error) {
-      console.error('Error in /topics command:', error);
-      await ctx.reply('❌ Сталася помилка, спробуй ще раз.');
+      console.error('Error in /text:', error);
+      await ctx.reply('❌ Сталася помилка при генерації тексту.');
     }
   };
 
-  private onTopicSelect = async (ctx) => {
+  private handleCallbackQuery = async ctx => {
     try {
-      const topic = ctx.match[1];
-      const telegramId = ctx.from.id;
+      const user = await this.userService.findOrCreate(ctx.from.id);
+      const data = ctx.callbackQuery.data; // наприклад "like:12345"
+      const [action, textId] = data.split(':');
 
-      const user = await this.userService.findOrCreate(telegramId);
-
-      const topics = user.topics.includes(topic)
-        ? user.topics.filter((t) => t !== topic)
-        : [...user.topics, topic];
-
-      await this.userService.updateTopics(telegramId, topics);
-
-      await ctx.editMessageReplyMarkup(this.buildTopicsKeyboard(topics).reply_markup);
+      if (action === 'like') {
+        await this.userService.likeText(user._id, textId);
+        await ctx.reply('Ти лайкнув текст ✅');
+      } else if (action === 'dislike') {
+        await this.userService.dislikeText(user._id, textId);
+        await ctx.reply('Ти дизлайкнув текст ❌');
+      }
     } catch (error) {
-      console.error('Error in topic toggle:', error);
+      console.error('Error handling callback:', error);
+      await ctx.answerCbQuery('Сталася помилка ❌');
     }
   };
-
-  private sendTextByTopic = async (ctx) => {
-  try {
-    const user = await this.userService.findOrCreate(ctx.from.id);
-
-    if (!user.topics.length) {
-      return ctx.reply('Спочатку обери теми через /topics 😉');
-    }
-
-    await ctx.reply('⏳ Генерую текст для тебе...');
-
-    const text = await this.aiService.generateText(user.topics);
-
-    await ctx.reply(text);
-  } catch (error) {
-    console.error('Error in /text:', error);
-    await ctx.reply('❌ Сталася помилка при генерації тексту.');
-  }
-};
-
-  // ================= Utility =================
-
-  private buildTopicsKeyboard(activeTopics: string[]) {
-    return {
-      reply_markup: {
-        inline_keyboard: TOPICS.map((topic) => [
-          {
-            text: activeTopics.includes(topic) ? `✅ ${topic}` : topic,
-            callback_data: `topic:${topic}`,
-          },
-        ]),
-      },
-    };
-  }
 }

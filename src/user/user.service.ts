@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { User } from './user.schema';
 
 @Injectable()
@@ -13,7 +13,33 @@ export class UserService {
     return user;
   }
 
-  async updateTopics(telegramId: number, topics: string[]) {
-    return this.userModel.updateOne({ telegramId }, { topics });
+  // 1️⃣ позначити як прочитано
+  async markAsRead(userId: Types.ObjectId, textId: Types.ObjectId) {
+    await this.userModel.updateOne(
+      { _id: userId },
+      { $addToSet: { seenTexts: textId } }
+    );
+  }
+
+  // 2️⃣ лайкнути текст
+  async likeText(userId: Types.ObjectId, textId: Types.ObjectId) {
+    await this.userModel.updateOne(
+      { _id: userId },
+      {
+        $addToSet: { likedTexts: textId },
+        $pull: { dislikedTexts: textId }, // прибираємо з дизлайку
+      }
+    );
+  }
+
+  // 3️⃣ дизлайкнути текст
+  async dislikeText(userId: Types.ObjectId, textId: Types.ObjectId) {
+    await this.userModel.updateOne(
+      { _id: userId },
+      {
+        $addToSet: { dislikedTexts: textId },
+        $pull: { likedTexts: textId }, // прибираємо з лайку
+      }
+    );
   }
 }
