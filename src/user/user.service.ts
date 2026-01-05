@@ -8,7 +8,7 @@ export class UserService {
   constructor(@InjectModel(User.name) private userModel: Model<User>) {}
 
   async findAllUsers() {
-    return this.userModel.find();
+    return this.userModel.find({ enabled: true });
   }
 
   async findOrCreate(telegramId: number) {
@@ -42,5 +42,9 @@ export class UserService {
         $pull: { likedTexts: textId }, // прибираємо з лайку
       },
     );
+  }
+
+  async updateLocation(telegramId: number, lat: number, lon: number) {
+    return this.userModel.findOneAndUpdate({ telegramId }, { lat, lon }, { new: true });
   }
 }

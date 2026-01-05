@@ -3,6 +3,8 @@ import { Telegraf } from 'telegraf';
 import * as cron from 'node-cron';
 import { UserService } from '../user/user.service';
 import { TextService } from '../text/text.service';
+import { WeatherService } from '../weather/weather.service';
+import { User } from '../user/user.schema';
 
 @Injectable()
 export class BotService implements OnModuleInit {
@@ -11,6 +13,7 @@ export class BotService implements OnModuleInit {
   constructor(
     private readonly userService: UserService,
     private readonly textService: TextService,
+    private readonly weatherService: WeatherService,
   ) {}
 
   async onModuleInit() {
@@ -20,15 +23,19 @@ export class BotService implements OnModuleInit {
 
     setImmediate(async () => {
       await this.bot.launch();
-      console.log('Bot launched');
     });
+
     this.scheduleDailyText();
   }
 
   private registerCommands() {
     this.bot.start(this.onStart);
-    this.bot.command('text', this.sendText);
+    this.bot.command('text', async ctx => {
+      this.sendText(await this.userService.findOrCreate(ctx.from.id));
+    });
+    this.bot.command('location', this.getLocation);
     this.bot.on('callback_query', this.handleCallbackQuery);
+    this.bot.on('location', this.handleLocation);
   }
 
   // ================= Handlers =================
@@ -44,41 +51,55 @@ export class BotService implements OnModuleInit {
     }
   };
 
-  private sendText = async ctx => {
+  private sendText = async (user: User) => {
     try {
-      // 1️⃣ Отримуємо користувача
-      const user = await this.userService.findOrCreate(ctx.from.id);
+      const { lat, lon } = user;
+      const weather = lat && lon ? await this.weatherService.getTodayWeather(lat, lon) : '';
 
-      // 2️⃣ Отримуємо текст, який юзер ще не бачив
       const text = await this.textService.getOneNotSeen(user.seenTexts);
       if (!text) {
-        return ctx.reply('Немає нових текстів для тебе 😔');
+        return this.bot.telegram.sendMessage(user.telegramId, 'Немає нових текстів для тебе 😔');
       }
 
-      // 3️⃣ Позначаємо текст як прочитаний
       await this.userService.markAsRead(user._id, text._id);
 
-      // 4️⃣ Відправляємо текст з кнопками лайк/дизлайк
-      await ctx.reply(text.content, {
-        reply_markup: {
-          inline_keyboard: [
-            [
-              { text: '👍 Лайк', callback_data: `like:${text._id}` },
-              { text: '👎 Дизлайк', callback_data: `dislike:${text._id}` },
+      await this.bot.telegram.sendMessage(
+        user.telegramId,
+        `${weather} Твій текст дня:\n\n${text.content}`,
+        {
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '👍 Лайк', callback_data: `like:${text._id}` },
+                { text: '👎 Дизлайк', callback_data: `dislike:${text._id}` },
+              ],
             ],
-          ],
+          },
         },
-      });
+      );
     } catch (error) {
       console.error('Error in /text:', error);
-      await ctx.reply('❌ Сталася помилка при генерації тексту.');
+      await this.bot.telegram.sendMessage(
+        user.telegramId,
+        '❌ Сталася помилка при генерації тексту.',
+      );
     }
+  };
+
+  private getLocation = async ctx => {
+    await ctx.reply('📍 Надішли свою локацію, щоб я показував погоду для твого регіону:', {
+      reply_markup: {
+        keyboard: [[{ text: '📍 Надіслати локацію', request_location: true }]],
+        resize_keyboard: true,
+        one_time_keyboard: true,
+      },
+    });
   };
 
   private handleCallbackQuery = async ctx => {
     try {
       const user = await this.userService.findOrCreate(ctx.from.id);
-      const data = ctx.callbackQuery.data; // наприклад "like:12345"
+      const data = ctx.callbackQuery.data;
       const [action, textId] = data.split(':');
 
       if (action === 'like') {
@@ -94,29 +115,22 @@ export class BotService implements OnModuleInit {
     }
   };
 
+  private handleLocation = async ctx => {
+    const { latitude, longitude } = ctx.message.location;
+
+    await this.userService.updateLocation(ctx.from.id, latitude, longitude);
+
+    await ctx.reply('✅ Локацію збережено! Тепер я показуватиму погоду для твого регіону 😊', {
+      reply_markup: { remove_keyboard: true },
+    });
+  };
+
   private scheduleDailyText = () => {
-    cron.schedule('0 7 * * *', async () => {
+    cron.schedule('0 5 * * *', async () => {
       try {
-        console.log('Запускаємо щоденну розсилку текстів');
-
-        const users = await this.userService.findAllUsers(); // треба зробити метод, який повертає всіх користувачів
+        const users = await this.userService.findAllUsers();
         for (const user of users) {
-          const text = await this.textService.getOneNotSeen(user.seenTexts);
-          if (text) {
-            await this.bot.telegram.sendMessage(user.telegramId, text.content, {
-              reply_markup: {
-                inline_keyboard: [
-                  [
-                    { text: '👍 Лайк', callback_data: `like:${text._id}` },
-                    { text: '👎 Дизлайк', callback_data: `dislike:${text._id}` },
-                  ],
-                ],
-              },
-            });
-
-            // Позначаємо текст як прочитаний
-            await this.userService.markAsRead(user._id, text._id);
-          }
+          this.sendText(user);
         }
       } catch (err) {
         console.error('Помилка розсилки:', err);

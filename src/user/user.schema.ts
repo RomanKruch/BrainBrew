@@ -1,13 +1,10 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 
-@Schema({ timestamps: true })
+@Schema({ timestamps: true, versionKey: false })
 export class User extends Document {
   @Prop({ required: true, unique: true })
   telegramId: number;
-
-  @Prop({ type: [String], default: [] })
-  topics: string[];
 
   @Prop({ default: '08:00' })
   deliveryTime: string;
@@ -23,6 +20,12 @@ export class User extends Document {
 
   @Prop({ type: [String], default: [] })
   seenTexts: string[];
+
+  @Prop()
+  lat?: number;
+
+  @Prop()
+  lon?: number;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
