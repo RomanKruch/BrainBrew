@@ -5,6 +5,7 @@ import { UserService } from '../user/user.service';
 import { TextService } from '../text/text.service';
 import { WeatherService } from '../weather/weather.service';
 import { User } from '../user/user.schema';
+import { NewsService } from '../news/news.service';
 
 @Injectable()
 export class BotService implements OnModuleInit {
@@ -14,6 +15,7 @@ export class BotService implements OnModuleInit {
     private readonly userService: UserService,
     private readonly textService: TextService,
     private readonly weatherService: WeatherService,
+    private readonly newsService: NewsService,
   ) {}
 
   async onModuleInit() {
@@ -56,6 +58,8 @@ export class BotService implements OnModuleInit {
       const { lat, lon } = user;
       const weather = lat && lon ? await this.weatherService.getTodayWeather(lat, lon) : '';
 
+      const news = await this.newsService.getTopNews(5);
+
       const text = await this.textService.getOneNotSeen(user.seenTexts);
       if (!text) {
         return this.bot.telegram.sendMessage(user.telegramId, 'Немає нових текстів для тебе 😔');
@@ -65,8 +69,12 @@ export class BotService implements OnModuleInit {
 
       await this.bot.telegram.sendMessage(
         user.telegramId,
-        `${weather} Твій текст дня:\n\n${text.content}`,
+        `${weather}${news}<b>Твій текст дня:</b>\n\n${text.content}`,
         {
+          link_preview_options: {
+            is_disabled: true,
+          },
+          parse_mode: 'HTML',
           reply_markup: {
             inline_keyboard: [
               [

@@ -16,7 +16,7 @@ export class WeatherService {
   const wind = Math.round(data.windspeed);
   const desc = this.mapWeatherCode(data.weathercode);
 
-  return `Погода сьогодні: ${temp}°C, ${desc}, вітер ${wind} м/с\n\n`;
+  return `<b>Погода сьогодні:</b> ${temp}°C, ${desc}, вітер ${wind} м/с\n\n`;
 }
 
   private mapWeatherCode(code: number): string {
