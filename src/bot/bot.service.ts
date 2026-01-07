@@ -36,6 +36,8 @@ export class BotService implements OnModuleInit {
     this.bot.command('text', async ctx => {
       this.sendText(await this.userService.findOrCreate(ctx.from.id));
     });
+    this.bot.command('activate', this.activate);
+    this.bot.command('deactivate', this.deactivate);
     this.bot.command('location', this.getLocation);
     this.bot.on('callback_query', this.handleCallbackQuery);
     this.bot.on('location', this.handleLocation);
@@ -46,12 +48,22 @@ export class BotService implements OnModuleInit {
   private onStart = async ctx => {
     try {
       await this.userService.findOrCreate(ctx.from.id);
-      console.log(1);
-      await ctx.reply('☕🧠 Вітаю в BrainBrew!');
+      const text = `☕🧠 Вітаю в BrainBrew!\n\nЯ — бот, який щоранку надсилає:\n   • Погоду у твоєму регіоні\n   • Головні новини\n   • Корисний текст дня, для саморозвитку\n\n📍 Щоб я міг показувати погоду — введи команду: /location\n(ти зможеш змінити локацію в будь-який момент цією ж командою)\n\n▶️ Щоб увімкнути розсилку: /activate\n\n⏸ Щоб вимкнути розсилку: /deactivate`;
+      await ctx.reply(text);
     } catch (error) {
       console.error('Error in /start:', error);
       await ctx.reply('❌ Сталася помилка при запуску бота.');
     }
+  };
+
+  private activate = async ctx => {
+    await this.userService.setActive(ctx.from.id, true);
+    await ctx.reply('✅ Розсилку увімкнено. Буду писати щоранку ☀️');
+  };
+
+  private deactivate = async ctx => {
+    await this.userService.setActive(ctx.from.id, false);
+    await ctx.reply('⏸ Розсилку вимкнено. Напишеш — знову ввімкнем 😉');
   };
 
   private sendText = async (user: User) => {

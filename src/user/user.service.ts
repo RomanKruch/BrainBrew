@@ -17,12 +17,14 @@ export class UserService {
     return user;
   }
 
-  // 1️⃣ позначити як прочитано
+  async setActive(telegramId: number, status: boolean) {
+    return this.userModel.updateOne({ telegramId }, { $set: { enabled: status } });
+  }
+
   async markAsRead(userId: Types.ObjectId, textId: Types.ObjectId) {
     await this.userModel.updateOne({ _id: userId }, { $addToSet: { seenTexts: textId } });
   }
 
-  // 2️⃣ лайкнути текст
   async likeText(userId: Types.ObjectId, textId: Types.ObjectId) {
     await this.userModel.updateOne(
       { _id: userId },
@@ -33,7 +35,6 @@ export class UserService {
     );
   }
 
-  // 3️⃣ дизлайкнути текст
   async dislikeText(userId: Types.ObjectId, textId: Types.ObjectId) {
     await this.userModel.updateOne(
       { _id: userId },
