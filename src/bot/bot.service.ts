@@ -6,6 +6,7 @@ import { TextService } from '../text/text.service';
 import { WeatherService } from '../weather/weather.service';
 import { User } from '../user/user.schema';
 import { NewsService } from '../news/news.service';
+import { getMorningGreeting } from '../util/getMorningGreeting';
 
 @Injectable()
 export class BotService implements OnModuleInit {
@@ -55,6 +56,8 @@ export class BotService implements OnModuleInit {
 
   private sendText = async (user: User) => {
     try {
+      const greeting = getMorningGreeting();
+
       const { lat, lon } = user;
       const weather = lat && lon ? await this.weatherService.getTodayWeather(lat, lon) : '';
 
@@ -69,7 +72,7 @@ export class BotService implements OnModuleInit {
 
       await this.bot.telegram.sendMessage(
         user.telegramId,
-        `${weather}${news}<b>Твій текст дня:</b>\n\n${text.content}`,
+        `${greeting}${weather}${news}<b>Твій текст дня:</b>\n\n${text.content}`,
         {
           link_preview_options: {
             is_disabled: true,
