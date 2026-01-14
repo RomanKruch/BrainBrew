@@ -7,17 +7,17 @@ export class WeatherService {
   constructor(private readonly http: HttpService) {}
 
   async getTodayWeather(lat: number, lon: number): Promise<string> {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&timezone=auto`;
 
-  const res = await firstValueFrom(this.http.get(url));
-  const data = res.data.current_weather;
+    const res = await firstValueFrom(this.http.get(url));
+    const data = res.data.current_weather;
 
-  const temp = Math.round(data.temperature);
-  const wind = Math.round(data.windspeed);
-  const desc = this.mapWeatherCode(data.weathercode);
+    const temp = Math.round(data.temperature);
+    const wind = Math.round(data.windspeed);
+    const desc = this.mapWeatherCode(data.weathercode);
 
-  return `<b>Погода сьогодні:</b> ${temp}°C, ${desc}, вітер ${wind} м/с\n\n`;
-}
+    return `<b>Погода сьогодні:</b> ${temp}°C, ${desc}, вітер ${wind} м/с\n\n`;
+  }
 
   private mapWeatherCode(code: number): string {
     const map: Record<number, string> = {

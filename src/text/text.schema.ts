@@ -10,10 +10,10 @@ export class Text extends Document {
   active: boolean;
 
   @Prop({ default: 'admin' })
-  author: string; // хто додав текст
+  author: string;
 
   @Prop({ type: [String], default: [] })
-  tags: string[]; // наприклад ["мотивація", "бізнес"]
+  tags: string[];
 }
 
 export const TextSchema = SchemaFactory.createForClass(Text);

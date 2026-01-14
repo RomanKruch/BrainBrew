@@ -1,15 +1,7 @@
 export function getMorningGreeting(): string {
   const now = new Date();
 
-  const days = [
-    'неділя',
-    'понеділок',
-    'вівторок',
-    'середа',
-    'четвер',
-    'пʼятниця',
-    'субота',
-  ];
+  const days = ['неділя', 'понеділок', 'вівторок', 'середа', 'четвер', 'пʼятниця', 'субота'];
 
   const months = [
     'січня',
