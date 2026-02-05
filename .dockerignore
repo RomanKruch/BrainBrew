@@ -1,0 +1,39 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Env
+.env
+.env.local
+.env.production
+
+# Build
+dist/
+build/
+
+# Nest cache
+.nest/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Logs
+logs/
+*.log
+
+# Coverage / tests (even if you don't use them now)
+coverage/
+
+# Temporary
+tmp/
+temp/
