@@ -41,9 +41,11 @@
 👨‍💻 Author
 
   Roman Krychkivskyi
+  
   Web Developer (React / Next.js, NestJS / Express)
 
 📄 License
 
   MIT License
+
 
